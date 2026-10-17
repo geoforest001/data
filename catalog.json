@@ -1,5 +1,28 @@
 {
   "version": 2,
   "updated": "2026-10-17",
-  "surveys": []
+  "surveys": [
+    {
+      "id": "ina-nochi",
+      "name": "伊那市 農地データ",
+      "note": "農地ポリゴン",
+      "bbox": [
+        137.879505,
+        35.707234,
+        138.173141,
+        35.961932
+      ],
+      "sheet": null,
+      "layers": [
+        {
+          "type": "農地筆ポリゴン",
+          "label": "農地筆ポリゴン",
+          "file": "surveys/ina-nochi/farm_polygon.pmtiles",
+          "size": 13526489,
+          "minzoom": 8,
+          "maxzoom": 16
+        }
+      ]
+    }
+  ]
 }
