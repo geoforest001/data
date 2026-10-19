@@ -1,0 +1,311 @@
+<!doctype html>
+<!-- pmtiles-publisher-viewer:5 -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GIS データビューア</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+  :root {
+    --bg: #ffffff; --panel: #f6f7f9; --text: #1f2933; --muted: #6b7785;
+    --line: #dfe3e8; --accent: #1f6feb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171c; --panel: #1b1f26; --text: #e6e9ee; --muted: #98a2b0;
+            --line: #2c323b; --accent: #5aa2ff; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font: 14px/1.5 -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+         color: var(--text); background: var(--bg); display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+           border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; flex: 1; }
+  select { font: inherit; padding: 3px 6px; color: var(--text); background: var(--bg);
+           border: 1px solid var(--line); border-radius: 6px; }
+  main { flex: 1; display: flex; min-height: 0; }
+  aside { width: 300px; overflow-y: auto; border-right: 1px solid var(--line);
+          background: var(--panel); padding: 8px 0; }
+  .survey { padding: 8px 14px 2px; font-size: 12px; font-weight: 600; color: var(--muted);
+            letter-spacing: .04em; }
+  .item { display: flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: default; }
+  .item:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .item label { flex: 1; min-width: 0; cursor: pointer; }
+  .item .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .meta { display: block; font-size: 11px; color: var(--muted); }
+  .chips { display: flex; gap: 2px; margin-top: 3px; flex-wrap: wrap; }
+  .chips i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
+  .item button { font: inherit; font-size: 12px; padding: 1px 8px; cursor: pointer;
+                 color: var(--accent); background: none; border: 1px solid var(--line);
+                 border-radius: 6px; }
+  #map { flex: 1; min-width: 0; }
+  .msg { padding: 14px; color: var(--muted); }
+  .msg code { background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+  .maplibregl-popup-content { max-height: 280px; overflow: auto; font-size: 12px;
+                              color: #1f2933; padding: 10px 12px; }
+  .maplibregl-popup-content table { border-collapse: collapse; }
+  .maplibregl-popup-content td { padding: 1px 8px 1px 0; vertical-align: top; }
+  .maplibregl-popup-content td:first-child { color: #6b7785; white-space: nowrap; }
+  .maplibregl-popup-content h4 { margin: 0 0 4px; font-size: 12px; }
+  @media (max-width: 700px) {
+    main { flex-direction: column-reverse; }
+    aside { width: auto; height: 38%; border-right: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>GIS データビューア</h1>
+  <label>背景
+    <select id="basemap">
+      <option value="pale">地理院 淡色</option>
+      <option value="photo">地理院 航空写真</option>
+      <option value="blank">地理院 白地図</option>
+      <option value="osm">OpenStreetMap</option>
+    </select>
+  </label>
+</header>
+<main>
+  <aside id="list"><div class="msg">カタログを読み込み中…</div></aside>
+  <div id="map"></div>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
+<script src="https://unpkg.com/@geomatico/maplibre-cog-protocol@0.10.0/dist/index.js"></script>
+<script>
+const COLORS = ["#e4572e", "#17bebb", "#ffc914", "#76b041", "#7768ae", "#f28f3b", "#2e86ab", "#c44569"];
+const BASEMAPS = {
+  pale:  { url: "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png", attr: "地理院タイル", max: 18 },
+  photo: { url: "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", attr: "地理院タイル", max: 18 },
+  blank: { url: "https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png", attr: "地理院タイル", max: 14 },
+  osm:   { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "© OpenStreetMap contributors", max: 19 },
+};
+
+const hadHash = !!location.hash;   // 共有リンクの表示位置があれば自動ズームしない
+maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
+if (typeof MaplibreCOGProtocol !== "undefined") maplibregl.addProtocol("cog", MaplibreCOGProtocol.cogProtocol);   // COG (ラスター)
+
+const map = new maplibregl.Map({
+  container: "map",
+  center: [138.0, 36.0], zoom: 8,
+  style: { version: 8, sources: {}, layers: [] },
+  hash: true,
+});
+new ResizeObserver(() => map.resize()).observe(document.getElementById("map"));
+map.addControl(new maplibregl.NavigationControl(), "top-right");
+map.addControl(new maplibregl.ScaleControl({ unit: "metric" }));
+
+const state = { sets: [], visible: new Set() };
+
+function setBasemap(key) {
+  const b = BASEMAPS[key];
+  if (map.getLayer("basemap")) map.removeLayer("basemap");
+  if (map.getSource("basemap")) map.removeSource("basemap");
+  map.addSource("basemap", { type: "raster", tiles: [b.url], tileSize: 256, maxzoom: b.max, attribution: b.attr });
+  const first = map.getStyle().layers[0]?.id;   // データレイヤの下に入れる
+  map.addLayer({ id: "basemap", type: "raster", source: "basemap" }, first);
+}
+
+// ルールの条件 [項目, 演算子, 値] を MapLibre の式にする
+function condExpr(c) {
+  const [f, op, v] = c, has = ["has", f];
+  if (op === "in") return ["all", has, ["in", ["to-string", ["get", f]], ["literal", v.map(String)]]];
+  if (typeof v === "number") {
+    const o = { "=": "==", "!=": "!=", "<": "<", "<=": "<=", ">": ">", ">=": ">=" }[op];
+    return ["all", has, [o, ["to-number", ["get", f]], v]];
+  }
+  return ["all", has, [op === "=" ? "==" : "!=", ["to-string", ["get", f]], v]];
+}
+
+// QGIS のシンボル (catalog.json の style) を MapLibre の式にする
+function valExpr(st, key, fallback) {
+  if (!st) return fallback;
+  const dflt = (st.default && st.default[key] !== undefined) ? st.default[key] : fallback;
+  if (st.mode === "categorized") {
+    const seen = new Map();
+    (st.categories || []).forEach(c => { if (c[key] !== undefined && !seen.has(String(c.value))) seen.set(String(c.value), c[key]); });
+    if (!seen.size) return dflt;
+    const args = [];
+    seen.forEach((val, label) => args.push(label, val));
+    return ["match", ["to-string", ["get", st.field]], ...args, dflt];
+  }
+  if (st.mode === "rules") {
+    const cases = [];
+    (st.rules || []).forEach(r => {
+      if (r[key] === undefined) return;
+      const cs = (r.conds || []).map(condExpr);
+      cases.push(cs.length === 0 ? true : cs.length === 1 ? cs[0] : ["all", ...cs], r[key]);
+    });
+    return cases.length ? ["case", ...cases, dflt] : dflt;
+  }
+  if (st.mode === "graduated") {
+    const cases = [];
+    (st.ranges || []).forEach(r => {
+      if (r[key] === undefined) return;
+      const x = ["to-number", ["get", st.field]];
+      cases.push(["all", ["has", st.field], [">=", x, r.min], ["<=", x, r.max]], r[key]);
+    });
+    return cases.length ? ["case", ...cases, dflt] : dflt;
+  }
+  return st[key] !== undefined ? st[key] : fallback;
+}
+
+function swatchColors(t) {
+  const st = t.style;
+  if (t.type === "cog") return [t.color];
+  if (!st) return [t.color];
+  const key = t.geometry.includes("polygon") || t.geometry.includes("point") ? "fill" : "stroke";
+  if (st.mode === "categorized") {
+    const c = (st.categories || []).map(x => ({ color: x[key] || x.stroke, label: x.label }));
+    if (st.default) c.push({ color: st.default[key] || st.default.stroke, label: "その他" });
+    return c.length ? c : [t.color];
+  }
+  if (st.mode === "graduated") return (st.ranges || []).map(x => ({ color: x[key] || x.stroke, label: x.label }));
+  if (st.mode === "rules") {
+    const c = (st.rules || []).map(x => ({ color: x[key] || x.stroke, label: x.label }));
+    if (st.default) c.push({ color: st.default[key] || st.default.stroke, label: "その他" });
+    return c.length ? c : [t.color];
+  }
+  return [st[key] || st.stroke || t.color];
+}
+
+function addCog(t, i) {
+  const id = `ts-${i}`;
+  const url = new URL(t.path, location.href).href;
+  map.addSource(id, { type: "raster", url: `cog://${url}`, tileSize: 256, bounds: t.bounds, maxzoom: Math.min(22, t.maxzoom) });
+  map.addLayer({ id: `${id}-raster`, type: "raster", source: id, layout: { visibility: state.visible.has(t.path) ? "visible" : "none" } });
+  t._layers = [`${id}-raster`];
+}
+
+function addTileset(t, i) {
+  if (t.type === "cog") return addCog(t, i);
+  const id = `ts-${i}`;
+  const url = new URL(t.path, location.href).href;
+  map.addSource(id, { type: "vector", url: `pmtiles://${url}` });
+  const color = t.color, sl = t.layer, st = t.style, vis = state.visible.has(t.path) ? "visible" : "none";
+  const common = { source: id, "source-layer": sl, layout: { visibility: vis } };
+  if (t.geometry.includes("polygon")) {
+    map.addLayer({ ...common, id: `${id}-fill`, type: "fill",
+      paint: { "fill-color": valExpr(st, "fill", color), "fill-opacity": valExpr(st, "fillOpacity", 0.4) } });
+    map.addLayer({ ...common, id: `${id}-line`, type: "line",
+      paint: { "line-color": valExpr(st, "stroke", color), "line-opacity": valExpr(st, "strokeOpacity", 1),
+               "line-width": valExpr(st, "strokeWidth", 1.5) } });
+  } else if (t.geometry.includes("line")) {
+    map.addLayer({ ...common, id: `${id}-line`, type: "line",
+      paint: { "line-color": valExpr(st, "stroke", color), "line-opacity": valExpr(st, "strokeOpacity", 1),
+               "line-width": valExpr(st, "strokeWidth", 2.5) } });
+  } else {
+    map.addLayer({ ...common, id: `${id}-circle`, type: "circle",
+      paint: { "circle-color": valExpr(st, "fill", color), "circle-opacity": valExpr(st, "fillOpacity", 1),
+               "circle-radius": valExpr(st, "radius", 5),
+               "circle-stroke-color": valExpr(st, "stroke", "#fff"), "circle-stroke-opacity": valExpr(st, "strokeOpacity", 1),
+               "circle-stroke-width": valExpr(st, "strokeWidth", 1) } });
+  }
+  t._layers = map.getStyle().layers.filter(l => l.id.startsWith(id + "-")).map(l => l.id);
+}
+
+function setVisible(t, on) {
+  on ? state.visible.add(t.path) : state.visible.delete(t.path);
+  (t._layers || []).forEach(l => map.setLayoutProperty(l, "visibility", on ? "visible" : "none"));
+}
+
+function zoomTo(t) {
+  const [w, s, e, n] = t.bounds;
+  map.fitBounds([[w, s], [e, n]], { padding: 60, maxZoom: Math.max(t.maxzoom, 12), duration: 600 });
+}
+
+function fmtSize(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+
+function renderList() {
+  const el = document.getElementById("list");
+  el.innerHTML = "";
+  let current = null;
+  state.sets.forEach(t => {
+    if (t.survey !== current) {
+      current = t.survey;
+      const h = document.createElement("div");
+      h.className = "survey"; h.textContent = t.surveyName || current || "(直下)";
+      el.appendChild(h);
+    }
+    const row = document.createElement("div");
+    row.className = "item";
+    const cb = Object.assign(document.createElement("input"), { type: "checkbox", id: "cb-" + t.path });
+    cb.checked = state.visible.has(t.path);
+    cb.onchange = () => setVisible(t, cb.checked);
+    const cols = swatchColors(t).map(c => typeof c === "string" ? { color: c, label: "" } : c);
+    const sw = document.createElement("span"); sw.className = "swatch"; sw.style.background = cols[0].color || t.color;
+    if (t.type === "cog") sw.style.background = "linear-gradient(135deg, #e4572e, #76b041 50%, #2e86ab)";   // 画像
+    const lb = document.createElement("label"); lb.htmlFor = cb.id;
+    const nm = document.createElement("span"); nm.className = "name"; nm.textContent = t.name; nm.title = t.path;
+    const mt = document.createElement("span"); mt.className = "meta";
+    mt.textContent = t.type === "cog"
+      ? `画像 (COG) · ${t.width}×${t.height} · ${fmtSize(t.size)}`
+      : `${t.geometry} · ${t.features} 件 · z${t.minzoom}–${t.maxzoom} · ${fmtSize(t.size)}`;
+    lb.append(nm, mt);
+    if (cols.length > 1) {
+      const chips = document.createElement("span"); chips.className = "chips";
+      cols.slice(0, 12).forEach(c => {
+        const ch = document.createElement("i"); ch.style.background = c.color; ch.title = c.label || "";
+        chips.appendChild(ch);
+      });
+      lb.appendChild(chips);
+    }
+    const go = document.createElement("button"); go.textContent = "移動"; go.onclick = () => { cb.checked = true; setVisible(t, true); zoomTo(t); };
+    row.append(cb, sw, lb, go);
+    el.appendChild(row);
+  });
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+map.on("click", e => {
+  const layers = state.sets.flatMap(t => t.type !== "cog" && state.visible.has(t.path) ? t._layers || [] : []);
+  const feats = layers.length ? map.queryRenderedFeatures(e.point, { layers }) : [];
+  if (!feats.length) return;
+  const f = feats[0];
+  const t = state.sets.find(x => x.layer === f.sourceLayer && (x._layers || []).includes(f.layer.id));
+  const rows = Object.entries(f.properties).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("");
+  new maplibregl.Popup({ maxWidth: "360px" }).setLngLat(e.lngLat)
+    .setHTML(`<h4>${esc(t ? t.name : f.sourceLayer)}</h4><table>${rows || "<tr><td>属性なし</td></tr>"}</table>`).addTo(map);
+});
+map.on("mousemove", e => {
+  const layers = state.sets.flatMap(t => t.type !== "cog" && state.visible.has(t.path) ? t._layers || [] : []);
+  map.getCanvas().style.cursor = layers.length && map.queryRenderedFeatures(e.point, { layers }).length ? "pointer" : "";
+});
+
+document.getElementById("basemap").onchange = ev => setBasemap(ev.target.value);
+
+map.on("load", async () => {
+  setBasemap("pale");
+  const el = document.getElementById("list");
+  let cat;
+  try {
+    let r = await fetch("tilesets.json", { cache: "no-cache" });
+    if (!r.ok) r = await fetch("catalog.json", { cache: "no-cache" });      // 旧版の一覧
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    cat = await r.json();
+  } catch (err) {
+    el.innerHTML = `<div class="msg">tilesets.json を読み込めません (${esc(err.message)})。<br>
+      ファイルを直接開いている場合は、<code>python3 serve.py リポジトリのパス</code> で起動してください。</div>`;
+    return;
+  }
+  state.sets = (cat.tilesets || []).map((t, i) => ({ ...t, color: COLORS[i % COLORS.length] }));
+  if (!state.sets.length) { el.innerHTML = '<div class="msg">PMTiles がまだありません。</div>'; return; }
+  const want = new URLSearchParams(location.search).get("show");   // ?show=パス で初期表示を指定
+  state.sets.forEach(t => { if (!want || want.split(",").includes(t.path) || want.split(",").includes(t.name)) state.visible.add(t.path); });
+  state.sets.forEach((t, i) => { if (t.type === "cog") addTileset(t, i); });      // 画像を下に
+  state.sets.forEach((t, i) => { if (t.type !== "cog") addTileset(t, i); });       // ベクターを上に
+  renderList();
+  if (!hadHash) {
+    const shown = state.sets.filter(t => state.visible.has(t.path));
+    const b = shown.reduce((a, t) => [Math.min(a[0], t.bounds[0]), Math.min(a[1], t.bounds[1]), Math.max(a[2], t.bounds[2]), Math.max(a[3], t.bounds[3])],
+                           [180, 90, -180, -90]);
+    if (b[0] <= b[2]) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: 16, duration: 0 });
+  }
+});
+</script>
+</body>
+</html>
