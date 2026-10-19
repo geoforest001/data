@@ -125,6 +125,38 @@
    "survey": "surveys/ina-nochi",
    "surveyName": "伊那市 農地データ",
    "name": "suiro"
+  },
+  {
+   "path": "surveys/ina-nochi/農地筆ポリゴン2025.pmtiles",
+   "layer": "農地筆ポリゴン2025",
+   "geometry": "polygon",
+   "bounds": [
+    137.8795051,
+    35.7072339,
+    138.1731411,
+    35.9619322
+   ],
+   "minzoom": 0,
+   "maxzoom": 14,
+   "features": 54980,
+   "fields": [
+    "OBJECTID",
+    "耕地の種類",
+    "Shape__Area",
+    "Shape__Length"
+   ],
+   "size": 8602924,
+   "survey": "surveys/ina-nochi",
+   "surveyName": "伊那市 農地データ",
+   "name": "農地筆ポリゴン2025",
+   "style": {
+    "mode": "single",
+    "fill": "#ff7f00",
+    "fillOpacity": 1.0,
+    "stroke": "#232323",
+    "strokeOpacity": 1.0,
+    "strokeWidth": 0.98
+   }
   }
  ]
 }
