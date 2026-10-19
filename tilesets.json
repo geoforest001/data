@@ -127,6 +127,38 @@
    "name": "suiro"
   },
   {
+   "path": "surveys/ina-nochi/パイプライン.pmtiles",
+   "layer": "パイプライン",
+   "geometry": "line string",
+   "bounds": [
+    137.8904427,
+    35.7727615,
+    137.9540598,
+    35.9044842
+   ],
+   "minzoom": 0,
+   "maxzoom": 14,
+   "features": 1523,
+   "fields": [
+    "id",
+    "名称",
+    "規格",
+    "延長",
+    "layer",
+    "path"
+   ],
+   "size": 307684,
+   "survey": "surveys/ina-nochi",
+   "surveyName": "伊那市 農地データ",
+   "name": "パイプライン",
+   "style": {
+    "mode": "single",
+    "stroke": "#1f78b4",
+    "strokeOpacity": 1.0,
+    "strokeWidth": 1.74
+   }
+  },
+  {
    "path": "surveys/ina-nochi/農地筆ポリゴン2025.pmtiles",
    "layer": "農地筆ポリゴン2025",
    "geometry": "polygon",
@@ -152,9 +184,9 @@
    "style": {
     "mode": "single",
     "fill": "#ff7f00",
-    "fillOpacity": 1.0,
+    "fillOpacity": 0.5,
     "stroke": "#232323",
-    "strokeOpacity": 1.0,
+    "strokeOpacity": 0.5,
     "strokeWidth": 0.98
    }
   }
