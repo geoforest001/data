@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- pmtiles-publisher-viewer:5 -->
+<!-- pmtiles-publisher-viewer:6 -->
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -289,16 +289,28 @@ map.on("load", async () => {
     cat = await r.json();
   } catch (err) {
     el.innerHTML = `<div class="msg">tilesets.json を読み込めません (${esc(err.message)})。<br>
-      ファイルを直接開いている場合は、<code>python3 serve.py リポジトリのパス</code> で起動してください。</div>`;
+      index.html を直接開いている場合は、公開サイトの URL (https://ユーザー名.github.io/リポジトリ名/) で開いてください。</div>`;
     return;
   }
   state.sets = (cat.tilesets || []).map((t, i) => ({ ...t, color: COLORS[i % COLORS.length] }));
+  // 一覧にあってもファイルが無い (GitHub 上で削除された) 項目は、表示しない
+  await Promise.all(state.sets.map(async t => {
+    try { if ((await fetch(t.path, { method: "HEAD", cache: "no-cache" })).status === 404) t.missing = true; } catch (e) { /* 通信できないときは、そのまま表示する */ }
+  }));
+  const missing = state.sets.filter(t => t.missing).length;
+  state.sets = state.sets.filter(t => !t.missing);
   if (!state.sets.length) { el.innerHTML = '<div class="msg">PMTiles がまだありません。</div>'; return; }
   const want = new URLSearchParams(location.search).get("show");   // ?show=パス で初期表示を指定
   state.sets.forEach(t => { if (!want || want.split(",").includes(t.path) || want.split(",").includes(t.name)) state.visible.add(t.path); });
   state.sets.forEach((t, i) => { if (t.type === "cog") addTileset(t, i); });      // 画像を下に
   state.sets.forEach((t, i) => { if (t.type !== "cog") addTileset(t, i); });       // ベクターを上に
   renderList();
+  if (missing) {
+    const m = document.createElement("div");
+    m.className = "msg";
+    m.textContent = `${missing} 件は、ファイルが見つからないため表示していません (一覧が古い可能性があります)。`;
+    el.appendChild(m);
+  }
   if (!hadHash) {
     const shown = state.sets.filter(t => state.visible.has(t.path));
     const b = shown.reduce((a, t) => [Math.min(a[0], t.bounds[0]), Math.min(a[1], t.bounds[1]), Math.max(a[2], t.bounds[2]), Math.max(a[3], t.bounds[3])],

@@ -2,30 +2,6 @@
  "version": 1,
  "tilesets": [
   {
-   "path": "surveys/ina-nochi/farm_polygon.pmtiles",
-   "layer": "農地筆ポリゴン",
-   "geometry": "polygon",
-   "bounds": [
-    137.879505,
-    35.707234,
-    138.173141,
-    35.961932
-   ],
-   "minzoom": 0,
-   "maxzoom": 16,
-   "features": 61164,
-   "fields": [
-    "OBJECTID",
-    "Shape__Area",
-    "Shape__Length",
-    "耕地の種類"
-   ],
-   "size": 13526489,
-   "survey": "surveys/ina-nochi",
-   "surveyName": "伊那市 農地データ",
-   "name": "farm_polygon"
-  },
-  {
    "path": "surveys/ina-nochi/manhole.pmtiles",
    "layer": "manhole",
    "geometry": "point",
