@@ -112,6 +112,38 @@
    }
   },
   {
+   "path": "surveys/ina-nochi/西箕輪テスト用.pmtiles",
+   "layer": "西箕輪テスト用",
+   "geometry": "point",
+   "bounds": [
+    137.9444057,
+    35.8898715,
+    137.9540455,
+    35.9020066
+   ],
+   "minzoom": 0,
+   "maxzoom": 14,
+   "features": 219,
+   "fields": [
+    "fid",
+    "OBJECTID",
+    "id"
+   ],
+   "size": 43517,
+   "survey": "surveys/ina-nochi",
+   "surveyName": "伊那市 農地データ",
+   "name": "西箕輪テスト用",
+   "style": {
+    "mode": "single",
+    "fill": "#beb297",
+    "fillOpacity": 1.0,
+    "stroke": "#232323",
+    "strokeOpacity": 1.0,
+    "strokeWidth": 1.0,
+    "radius": 3.78
+   }
+  },
+  {
    "path": "surveys/ina-nochi/農地筆ポリゴン2025.pmtiles",
    "layer": "農地筆ポリゴン2025",
    "geometry": "polygon",
