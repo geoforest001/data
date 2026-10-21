@@ -2,6 +2,44 @@
  "version": 1,
  "tilesets": [
   {
+   "path": "surveys/ina-nochi/manhole.pmtiles",
+   "layer": "manhole",
+   "geometry": "point",
+   "bounds": [
+    137.8904504,
+    35.7727571,
+    137.9540455,
+    35.9039967
+   ],
+   "minzoom": 0,
+   "maxzoom": 14,
+   "features": 6270,
+   "fields": [
+    "OBJECTID",
+    "id",
+    "備考",
+    "地区名",
+    "地図名",
+    "種別",
+    "結合用_表示",
+    "識別",
+    "配管名"
+   ],
+   "size": 1172307,
+   "survey": "surveys/ina-nochi",
+   "surveyName": "伊那市 農地データ",
+   "name": "manhole",
+   "style": {
+    "mode": "single",
+    "fill": "#a6cee3",
+    "fillOpacity": 1.0,
+    "stroke": "#232323",
+    "strokeOpacity": 1.0,
+    "strokeWidth": 1.0,
+    "radius": 3.02
+   }
+  },
+  {
    "path": "surveys/ina-nochi/suiro_水路.pmtiles",
    "layer": "suiro_水路",
    "geometry": "line string",
