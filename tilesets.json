@@ -197,6 +197,26 @@
    "order": 3
   },
   {
+   "type": "cog",
+   "path": "20261013tokushima/徳島CS.tif",
+   "bounds": [
+    134.39300537109375,
+    33.87269600798948,
+    134.49462890625,
+    33.92968762757659
+   ],
+   "minzoom": 0,
+   "maxzoom": 17,
+   "width": 9472,
+   "height": 6400,
+   "bands": 3,
+   "size": 23244925,
+   "survey": "20261013tokushima",
+   "surveyName": "",
+   "name": "徳島CS",
+   "order": 13
+  },
+  {
    "path": "20261013tokushima/谷線.pmtiles",
    "layer": "谷線",
    "geometry": "line string",
