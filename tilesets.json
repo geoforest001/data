@@ -198,6 +198,26 @@
   },
   {
    "type": "cog",
+   "path": "20261013tokushima/SHC_r50m_RBG.tif",
+   "bounds": [
+    134.38476562499997,
+    33.87041555094183,
+    134.49462890624997,
+    33.934245311173115
+   ],
+   "minzoom": 0,
+   "maxzoom": 15,
+   "width": 2560,
+   "height": 1792,
+   "bands": 4,
+   "size": 2199643,
+   "survey": "20261013tokushima",
+   "surveyName": "",
+   "name": "SHC_r50m_RBG",
+   "order": 7
+  },
+  {
+   "type": "cog",
    "path": "20261013tokushima/徳島CS.tif",
    "bounds": [
     134.39300537109375,
