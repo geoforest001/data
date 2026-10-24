@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- pmtiles-publisher-viewer:6 -->
+<!-- pmtiles-publisher-viewer:7 -->
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -91,7 +91,7 @@ if (typeof MaplibreCOGProtocol !== "undefined") maplibregl.addProtocol("cog", Ma
 const map = new maplibregl.Map({
   container: "map",
   center: [138.0, 36.0], zoom: 8,
-  style: { version: 8, sources: {}, layers: [] },
+  style: { version: 8, sources: {}, layers: [], glyphs: "https://glyphs.geolonia.com/{fontstack}/{range}.pbf" },     // 文字ラベル用のフォント (日本語を含む)
   hash: true,
 });
 new ResizeObserver(() => map.resize()).observe(document.getElementById("map"));
@@ -180,6 +180,78 @@ function addCog(t, i) {
   t._layers = [`${id}-raster`];
 }
 
+// ---- 模様・点の形の画像 (名前 pat:... / mk:... から、必要になったときに作る) ----------------
+function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+function canvasImage(w, h, draw) {
+  const c = document.createElement("canvas");
+  c.width = w * 2; c.height = h * 2;
+  const g = c.getContext("2d");
+  g.scale(2, 2);
+  draw(g);
+  return { data: g.getImageData(0, 0, c.width, c.height), pixelRatio: 2 };
+}
+
+function patternImage(p) {
+  const [, kind, angle, spacing, width, color, alpha] = p;
+  const a = +angle, s = Math.max(3, +spacing), col = rgba(color, +alpha), lw = +width;
+  const diag = a === 45 || a === 135 || kind === "cross" && a !== 0;
+  const n = Math.round(diag ? s * Math.SQRT2 : s);
+  return canvasImage(n, n, g => {
+    g.strokeStyle = col; g.lineWidth = lw; g.lineCap = "butt";
+    const line = (x1, y1, x2, y2) => { g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); };
+    const slash = () => line(0, n, n, 0), back = () => line(0, 0, n, n);       // 「/」と「\」
+    if (kind === "cross") { if (diag) { slash(); back(); } else { line(0, n / 2, n, n / 2); line(n / 2, 0, n / 2, n); } return; }
+    if (a === 0) line(0, n / 2, n, n / 2);
+    else if (a === 90) line(n / 2, 0, n / 2, n);
+    else if (a < 90) slash();
+    else back();
+  });
+}
+
+function markerImage(p) {
+  const [, shape, fill, fo, stroke, so, sw, rad] = p;
+  const r = +rad, w = +sw, size = Math.ceil(r * 2 + w * 2 + 4), c = size / 2;
+  return canvasImage(size, size, g => {
+    g.fillStyle = rgba(fill, +fo); g.strokeStyle = rgba(stroke, +so); g.lineWidth = w; g.lineJoin = "round";
+    const poly = n => { g.beginPath(); for (let k = 0; k < n; k++) { const t = -Math.PI / 2 + k * 2 * Math.PI / n; g.lineTo(c + r * Math.cos(t), c + r * Math.sin(t)); } g.closePath(); };
+    if (shape === "square") { g.beginPath(); g.rect(c - r * 0.85, c - r * 0.85, r * 1.7, r * 1.7); }
+    else if (shape === "diamond") poly(4);
+    else if (shape === "triangle") poly(3);
+    else if (shape === "pentagon") poly(5);
+    else if (shape === "hexagon") poly(6);
+    else if (shape === "octagon") poly(8);
+    else if (shape === "star") { g.beginPath(); for (let k = 0; k < 10; k++) { const t = -Math.PI / 2 + k * Math.PI / 5, q = k % 2 ? r * 0.45 : r; g.lineTo(c + q * Math.cos(t), c + q * Math.sin(t)); } g.closePath(); }
+    else if (shape === "cross" || shape === "x") {
+      g.save(); g.translate(c, c); if (shape === "x") g.rotate(Math.PI / 4);
+      g.lineWidth = Math.max(r * 0.55, 1.5); g.lineCap = "butt"; g.strokeStyle = rgba(fill, +fo);
+      g.beginPath(); g.moveTo(-r, 0); g.lineTo(r, 0); g.moveTo(0, -r); g.lineTo(0, r); g.stroke(); g.restore(); return;
+    }
+    else { g.beginPath(); g.arc(c, c, r, 0, 2 * Math.PI); }
+    g.fill();
+    if (w > 0 && +so > 0) g.stroke();
+  });
+}
+
+function ensureImage(id) {
+  if (!id || map.hasImage(id)) return;
+  const p = id.split(":");
+  const img = p[0] === "pat" ? patternImage(p) : p[0] === "mk" ? markerImage(p) : null;
+  if (img) map.addImage(id, img.data, { pixelRatio: img.pixelRatio });
+  else map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) });     // 見つからない名前は、透明にする
+}
+map.on("styleimagemissing", e => ensureImage(e.id));
+
+// ---- スタイルの補助 -------------------------------------------------------------
+function symbolsOf(st) {
+  if (!st) return [];
+  return (st.mode === "single" ? [st] : []).concat(st.categories || [], st.ranges || [], st.rules || [], st.default ? [st.default] : []);
+}
+function anyVal(st, key, pred) { return symbolsOf(st).some(s => s[key] !== undefined && (!pred || pred(s[key]))); }
+
+// QGIS の縮尺 (分母) を、MapLibre のズームにする (96dpi / 512px タイル、緯度で補正)
+function scaleToZoom(scale, lat) { return Math.log2(295829355 * Math.cos(lat * Math.PI / 180) / scale); }
+
 function addTileset(t, i) {
   if (t.type === "cog") return addCog(t, i);
   const id = `ts-${i}`;
@@ -187,6 +259,11 @@ function addTileset(t, i) {
   map.addSource(id, { type: "vector", url: `pmtiles://${url}` });
   const color = t.color, sl = t.layer, st = t.style, vis = state.visible.has(t.path) ? "visible" : "none";
   const common = { source: id, "source-layer": sl, layout: { visibility: vis } };
+  if (st && st.nl) {                                   // 0.2.x 以降: シンボルレイヤごとの設定
+    addStyled(t, id, st, color, vis);
+    t._layers = map.getStyle().layers.filter(l => l.id.startsWith(id + "-")).map(l => l.id);
+    return;
+  }
   if (t.geometry.includes("polygon")) {
     map.addLayer({ ...common, id: `${id}-fill`, type: "fill",
       paint: { "fill-color": valExpr(st, "fill", color), "fill-opacity": valExpr(st, "fillOpacity", 0.4) } });
@@ -205,6 +282,57 @@ function addTileset(t, i) {
                "circle-stroke-width": valExpr(st, "strokeWidth", 1) } });
   }
   t._layers = map.getStyle().layers.filter(l => l.id.startsWith(id + "-")).map(l => l.id);
+}
+
+// シンボルレイヤ (下から順) ごとに、地図のレイヤを作る
+function addStyled(t, id, st, color, vis) {
+  const poly = t.geometry.includes("polygon"), isLine = t.geometry.includes("line");
+  symbolsOf(st).forEach(s => Object.keys(s).forEach(k => { if (/^L\d+_(icon|pat)$/.test(k)) ensureImage(s[k]); }));     // 模様・点の画像を、先に登録する
+  const zr = {};
+  if (st.scaleMin !== undefined) {          // QGIS の縮尺による表示範囲
+    const lat = (t.bounds[1] + t.bounds[3]) / 2;
+    if (st.scaleMin > 0) zr.minzoom = Math.max(0, scaleToZoom(st.scaleMin, lat));
+    if (st.scaleMax > 0) zr.maxzoom = Math.min(24, scaleToZoom(st.scaleMax, lat));
+  }
+  const base = (suffix, type, paint, layout) => map.addLayer({
+    id: `${id}-${suffix}`, type, source: id, "source-layer": t.layer, paint, layout: { visibility: vis, ...layout }, ...zr });
+  for (let i = 0; i < st.nl; i++) {
+    const P = `L${i}_`, k = k2 => P + k2, s = (st.sl && st.sl[i]) || {};
+    const kind = s.k || (poly ? "fill" : isLine ? "line" : "marker");
+    if (kind === "fill") {
+      if (anyVal(st, k("fillOpacity"), v => v > 0))
+        base(`L${i}-fill`, "fill", { "fill-color": valExpr(st, k("fill"), color), "fill-opacity": valExpr(st, k("fillOpacity"), 0.4) });
+      if (anyVal(st, k("pat")))
+        base(`L${i}-pat`, "fill", { "fill-pattern": valExpr(st, k("pat"), ""), "fill-opacity": 1 });
+    }
+    if (kind === "fill" || kind === "line") {
+      if (anyVal(st, k("strokeOpacity"), v => v > 0)) {
+        const paint = { "line-color": valExpr(st, k("stroke"), color), "line-opacity": valExpr(st, k("strokeOpacity"), 1),
+                        "line-width": valExpr(st, k("strokeWidth"), poly ? 1.5 : 2.5) };
+        if (s.dash) paint["line-dasharray"] = s.dash;
+        base(`L${i}-line`, "line", paint, { "line-cap": s.cap || "butt", "line-join": s.join || "miter" });
+      }
+    }
+    if (kind === "marker") {
+      if (st.icons) {
+        base(`L${i}-icon`, "symbol", {}, { "icon-image": valExpr(st, k("icon"), ""), "icon-allow-overlap": true, "icon-ignore-placement": true });
+      } else {
+        base(`L${i}-circle`, "circle", { "circle-color": valExpr(st, k("fill"), color), "circle-opacity": valExpr(st, k("fillOpacity"), 1),
+          "circle-radius": valExpr(st, k("radius"), 5), "circle-stroke-color": valExpr(st, k("stroke"), "#fff"),
+          "circle-stroke-opacity": valExpr(st, k("strokeOpacity"), 1), "circle-stroke-width": valExpr(st, k("strokeWidth"), 1) });
+      }
+    }
+  }
+  const lb = st.label;
+  if (lb) {
+    const layout = { "text-field": ["to-string", ["coalesce", ["get", lb.field], ""]], "text-font": ["Noto Sans Regular"], "text-size": lb.size,
+                     "symbol-placement": isLine ? "line" : "point", "text-optional": true, "text-padding": 2 };
+    if (!poly && !isLine) {         // 点のラベルは、点 (記号) に重ならないよう、横 (右・左・上・下の順) に置く
+      const rad = Math.max(5, ...symbolsOf(st).map(s => +s.L0_radius || 0));
+      Object.assign(layout, { "text-variable-anchor": ["left", "right", "top", "bottom"], "text-radial-offset": (rad + 3) / lb.size, "text-justify": "auto" });
+    }
+    base("label", "symbol", { "text-color": lb.color, "text-halo-color": lb.halo || "rgba(0,0,0,0)", "text-halo-width": lb.haloWidth || 0 }, layout);
+  }
 }
 
 function setVisible(t, on) {
@@ -302,8 +430,11 @@ map.on("load", async () => {
   if (!state.sets.length) { el.innerHTML = '<div class="msg">PMTiles がまだありません。</div>'; return; }
   const want = new URLSearchParams(location.search).get("show");   // ?show=パス で初期表示を指定
   state.sets.forEach(t => { if (!want || want.split(",").includes(t.path) || want.split(",").includes(t.name)) state.visible.add(t.path); });
-  state.sets.forEach((t, i) => { if (t.type === "cog") addTileset(t, i); });      // 画像を下に
-  state.sets.forEach((t, i) => { if (t.type !== "cog") addTileset(t, i); });       // ベクターを上に
+  // 並び順: 保存フォルダごとに、QGIS のレイヤパネルの順 (公開時に記録した order)。一覧の上のものが、地図の手前になる
+  state.sets.sort((a, b) => (a.survey || "").localeCompare(b.survey || "") || ((a.order ?? 1e9) - (b.order ?? 1e9)) || a.path.localeCompare(b.path));
+  const bottomFirst = state.sets.map((t, i) => [t, i]).reverse();
+  bottomFirst.forEach(([t, i]) => { if (t.type === "cog") addTileset(t, i); });      // 画像を一番下に
+  bottomFirst.forEach(([t, i]) => { if (t.type !== "cog") addTileset(t, i); });       // ベクターは、一覧の下から順に重ねる
   renderList();
   if (missing) {
     const m = document.createElement("div");
