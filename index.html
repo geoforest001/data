@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- pmtiles-publisher-viewer:7 -->
+<!-- pmtiles-publisher-viewer:8 -->
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -27,8 +27,15 @@
   main { flex: 1; display: flex; min-height: 0; }
   aside { width: 300px; overflow-y: auto; border-right: 1px solid var(--line);
           background: var(--panel); padding: 8px 0; }
-  .survey { padding: 8px 14px 2px; font-size: 12px; font-weight: 600; color: var(--muted);
-            letter-spacing: .04em; }
+  .survey { padding: 8px 14px 4px; font-size: 12px; font-weight: 600; color: var(--muted);
+            letter-spacing: .04em; cursor: pointer; user-select: none; display: flex;
+            align-items: center; gap: 6px; }
+  .survey:hover { color: var(--text); }
+  .survey .arrow { width: 12px; flex: none; transition: transform .15s; display: inline-block; }
+  .survey.closed .arrow { transform: rotate(-90deg); }
+  .survey .gname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .survey .cnt { font-weight: 400; font-size: 11px; flex: none; }
+  .item.folded { display: none; }
   .item { display: flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: default; }
   .item:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
   .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
@@ -338,6 +345,7 @@ function addStyled(t, id, st, color, vis) {
 function setVisible(t, on) {
   on ? state.visible.add(t.path) : state.visible.delete(t.path);
   (t._layers || []).forEach(l => map.setLayoutProperty(l, "visibility", on ? "visible" : "none"));
+  if (typeof updateCounts === "function") updateCounts();
 }
 
 function zoomTo(t) {
@@ -347,6 +355,22 @@ function zoomTo(t) {
 
 function fmtSize(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
 
+// 調査ごとの開閉（閉じた調査を、このブラウザに覚えておく）
+const FOLD_KEY = "gis-viewer-folded:" + location.pathname;
+const folded = new Set();
+try { JSON.parse(localStorage.getItem(FOLD_KEY) || "[]").forEach(k => folded.add(k)); } catch (e) {}
+function saveFolded() { try { localStorage.setItem(FOLD_KEY, JSON.stringify([...folded])); } catch (e) {} }
+
+function updateCounts() {
+  document.querySelectorAll("#list .survey").forEach(h => {
+    const key = h.dataset.key;
+    const rows = [...document.querySelectorAll("#list .item")].filter(r => r.dataset.survey === key);
+    const on = rows.filter(r => r.querySelector("input").checked).length;
+    h.querySelector(".cnt").textContent = h.classList.contains("closed")
+      ? `${on}/${rows.length} 表示中` : `${rows.length}`;
+  });
+}
+
 function renderList() {
   const el = document.getElementById("list");
   el.innerHTML = "";
@@ -355,11 +379,28 @@ function renderList() {
     if (t.survey !== current) {
       current = t.survey;
       const h = document.createElement("div");
-      h.className = "survey"; h.textContent = t.surveyName || current || "(直下)";
+      const key = String(current || "");
+      h.className = "survey" + (folded.has(key) ? " closed" : ""); h.dataset.key = key;
+      h.title = "押すと、たたむ・開く";
+      const ar = document.createElement("span"); ar.className = "arrow"; ar.textContent = "▾";
+      const gn = document.createElement("span"); gn.className = "gname"; gn.textContent = t.surveyName || current || "(直下)";
+      const ct = document.createElement("span"); ct.className = "cnt";
+      h.append(ar, gn, ct);
+      h.onclick = () => {
+        const closed = !h.classList.contains("closed");
+        h.classList.toggle("closed", closed);
+        closed ? folded.add(key) : folded.delete(key);
+        saveFolded();
+        document.querySelectorAll("#list .item").forEach(r => {
+          if (r.dataset.survey === key) r.classList.toggle("folded", closed);
+        });
+        updateCounts();
+      };
       el.appendChild(h);
     }
     const row = document.createElement("div");
-    row.className = "item";
+    row.className = "item" + (folded.has(String(t.survey || "")) ? " folded" : "");
+    row.dataset.survey = String(t.survey || "");
     const cb = Object.assign(document.createElement("input"), { type: "checkbox", id: "cb-" + t.path });
     cb.checked = state.visible.has(t.path);
     cb.onchange = () => setVisible(t, cb.checked);
@@ -385,6 +426,7 @@ function renderList() {
     row.append(cb, sw, lb, go);
     el.appendChild(row);
   });
+  updateCounts();
 }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
