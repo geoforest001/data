@@ -493,6 +493,112 @@
    "order": 5
   },
   {
+   "path": "surveys/081111ルート.pmtiles",
+   "layer": "081111ルート",
+   "geometry": "line string",
+   "bounds": [
+    138.0926753,
+    35.7676713,
+    138.157535,
+    35.8615698
+   ],
+   "minzoom": 0,
+   "maxzoom": 14,
+   "features": 11,
+   "fields": [
+    "fid",
+    "name",
+    "cmt",
+    "desc",
+    "src",
+    "link1_href",
+    "link1_text",
+    "link1_type",
+    "link2_href",
+    "link2_text",
+    "link2_type",
+    "number",
+    "type"
+   ],
+   "size": 15469,
+   "survey": "surveys",
+   "surveyName": "",
+   "name": "081111ルート",
+   "style": {
+    "mode": "single",
+    "stroke": "#e31a1c",
+    "strokeOpacity": 1.0,
+    "strokeWidth": 2.49,
+    "L0_stroke": "#e31a1c",
+    "L0_strokeOpacity": 1.0,
+    "L0_strokeWidth": 2.49,
+    "nl": 1,
+    "sl": [
+     {
+      "k": "line",
+      "cap": "square",
+      "join": "bevel",
+      "dash": null
+     }
+    ],
+    "icons": false
+   },
+   "order": 0
+  },
+  {
+   "path": "surveys/081111ルート_2.pmtiles",
+   "layer": "081111ルート_2",
+   "geometry": "line string",
+   "bounds": [
+    138.0926753,
+    35.7676713,
+    138.1580819,
+    35.8615698
+   ],
+   "minzoom": 0,
+   "maxzoom": 14,
+   "features": 10,
+   "fields": [
+    "fid",
+    "name",
+    "cmt",
+    "desc",
+    "src",
+    "link1_href",
+    "link1_text",
+    "link1_type",
+    "link2_href",
+    "link2_text",
+    "link2_type",
+    "number",
+    "type"
+   ],
+   "size": 15274,
+   "survey": "surveys",
+   "surveyName": "",
+   "name": "081111ルート_2",
+   "style": {
+    "mode": "single",
+    "stroke": "#e31a1c",
+    "strokeOpacity": 1.0,
+    "strokeWidth": 2.49,
+    "L0_stroke": "#e31a1c",
+    "L0_strokeOpacity": 1.0,
+    "L0_strokeWidth": 2.49,
+    "nl": 1,
+    "sl": [
+     {
+      "k": "line",
+      "cap": "square",
+      "join": "bevel",
+      "dash": null
+     }
+    ],
+    "icons": false
+   },
+   "order": 1
+  },
+  {
    "path": "surveys/ina-nochi/manhole.pmtiles",
    "layer": "manhole",
    "geometry": "point",
