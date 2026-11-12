@@ -599,6 +599,61 @@
    "order": 1
   },
   {
+   "path": "surveys/081112ルート.pmtiles",
+   "layer": "081112ルート",
+   "geometry": "line string",
+   "bounds": [
+    138.073948,
+    35.7572606,
+    138.1013651,
+    35.8104287
+   ],
+   "minzoom": 0,
+   "maxzoom": 14,
+   "features": 11,
+   "fields": [
+    "fid",
+    "name",
+    "cmt",
+    "desc",
+    "src",
+    "link1_href",
+    "link1_text",
+    "link1_type",
+    "link2_href",
+    "link2_text",
+    "link2_type",
+    "number",
+    "type",
+    "layer",
+    "path"
+   ],
+   "size": 14449,
+   "survey": "surveys",
+   "surveyName": "",
+   "name": "081112ルート",
+   "style": {
+    "mode": "single",
+    "stroke": "#e31a1c",
+    "strokeOpacity": 1.0,
+    "strokeWidth": 2.49,
+    "L0_stroke": "#e31a1c",
+    "L0_strokeOpacity": 1.0,
+    "L0_strokeWidth": 2.49,
+    "nl": 1,
+    "sl": [
+     {
+      "k": "line",
+      "cap": "square",
+      "join": "bevel",
+      "dash": null
+     }
+    ],
+    "icons": false
+   },
+   "order": 0
+  },
+  {
    "path": "surveys/ina-nochi/manhole.pmtiles",
    "layer": "manhole",
    "geometry": "point",
