@@ -651,7 +651,59 @@
     ],
     "icons": false
    },
-   "order": 0
+   "order": 2
+  },
+  {
+   "path": "surveys/ログ_151241.pmtiles",
+   "layer": "ログ_151241",
+   "geometry": "line string",
+   "bounds": [
+    137.8980352,
+    35.8406732,
+    137.8996273,
+    35.8433069
+   ],
+   "minzoom": 0,
+   "maxzoom": 14,
+   "features": 1,
+   "fields": [
+    "name",
+    "cmt",
+    "desc",
+    "src",
+    "link1_href",
+    "link1_text",
+    "link1_type",
+    "link2_href",
+    "link2_text",
+    "link2_type",
+    "number",
+    "type"
+   ],
+   "size": 1945,
+   "survey": "surveys",
+   "surveyName": "",
+   "name": "ログ_151241",
+   "style": {
+    "mode": "single",
+    "stroke": "#ef6c00",
+    "strokeOpacity": 1.0,
+    "strokeWidth": 3.4,
+    "L0_stroke": "#ef6c00",
+    "L0_strokeOpacity": 1.0,
+    "L0_strokeWidth": 3.4,
+    "nl": 1,
+    "sl": [
+     {
+      "k": "line",
+      "cap": "round",
+      "join": "round",
+      "dash": null
+     }
+    ],
+    "icons": false
+   },
+   "order": 1
   },
   {
    "path": "surveys/ina-nochi/manhole.pmtiles",
